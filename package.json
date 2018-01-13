@@ -1,0 +1,28 @@
+{
+  "name": "plorth-runtime",
+  "version": "1.0.0",
+  "description": "Implementation of Plorth interpreter in TypeScript",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RauliL/plorth-runtime.git"
+  },
+  "bugs": {
+    "url": "https://github.com/RauliL/plorth-runtime/issues"
+  },
+  "homepage": "https://github.com/RauliL/plorth-runtime",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w"
+  },
+  "author": "Rauli Laine <rauli.laine@iki.fi>",
+  "license": "BSD-2-Clause",
+  "devDependencies": {
+    "plorth-types": "^1.0.1",
+    "typescript": "^2.6.2"
+  },
+  "dependencies": {
+    "plorth-runtime": "^2.0.0"
+  }
+}
