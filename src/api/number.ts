@@ -3,11 +3,11 @@ import { PrototypeDefinition } from "../runtime";
 
 const NumberPrototype: PrototypeDefinition = {
   "nan?"(context: Context) {
-    // TODO
+    context.pushBoolean(isNaN(context.peekNumber()));
   },
 
   "finite?"(context: Context) {
-    // TODO
+    context.pushBoolean(isFinite(context.peekNumber()));
   },
 
   times(context: Context) {
@@ -24,35 +24,51 @@ const NumberPrototype: PrototypeDefinition = {
   },
 
   abs(context: Context) {
-    // TODO
+    const number = context.popNumber();
+
+    context.pushNumber(number < 0 ? -number : number);
   },
 
   round(context: Context) {
-    // TODO
+    context.pushNumber(Math.round(context.popNumber()));
   },
 
   floor(context: Context) {
-    // TODO
+    context.pushNumber(Math.floor(context.popNumber()));
   },
 
   ceil(context: Context) {
-    // TODO
+    context.pushNumber(Math.ceil(context.popNumber()));
   },
 
   max(context: Context) {
-    // TODO
+    context.pushNumber(Math.max(context.popNumber(), context.popNumber()));
   },
 
   min(context: Context) {
-    // TODO
+    context.pushNumber(Math.min(context.popNumber(), context.popNumber()));
   },
 
   clamp(context: Context) {
-    // TODO
+    let number = context.popNumber();
+    const max = context.popNumber();
+    const min = context.popNumber();
+
+    if (number > max) {
+      number = max;
+    }
+    if (number < min) {
+      number = min;
+    }
+    context.pushNumber(number);
   },
 
   "in-range?"(context: Context) {
-    // TODO
+    const number = context.popNumber();
+    const max = context.popNumber();
+    const min = context.popNumber();
+
+    context.pushBoolean(number >= min && number <= max);
   },
 
   "+"(context: Context) {
@@ -77,11 +93,17 @@ const NumberPrototype: PrototypeDefinition = {
   },
 
   "/"(context: Context) {
-    // TODO
+    const a = context.popNumber();
+    const b = context.popNumber();
+
+    context.pushNumber(a / b);
   },
 
   "%"(context: Context) {
-    // TODO
+    const a = context.popNumber();
+    const b = context.popNumber();
+
+    context.pushNumber(a % b);
   },
 
   "&"(context: Context) {
