@@ -3,19 +3,25 @@ import { PrototypeDefinition } from "../runtime";
 
 const ErrorPrototype: PrototypeDefinition = {
   code(context: Context) {
-    // TODO
+    context.pushNumber(context.peekError().code);
   },
 
   message(context: Context) {
-    // TODO
+    const error = context.peekError();
+
+    if (error.message) {
+      context.pushString(error.message);
+    } else {
+      context.push(null);
+    }
   },
 
   position(context: Context) {
-    // TODO
+    context.push(null);
   },
 
   "throw"(context: Context) {
-    // TODO
+    throw context.popError();
   }
 };
 

@@ -120,6 +120,10 @@ export default class Context {
     } as PlorthValue);
   }
 
+  pushError(code: PlorthErrorCode, message?: string): void {
+    this.push(this.error(code, message));
+  }
+
   peek(type?: PlorthValueType): PlorthValue | null {
     if (this.stack.length > 0) {
       const value = this.stack[this.stack.length - 1];
@@ -167,6 +171,10 @@ export default class Context {
 
   peekWord(): PlorthWord {
     return this.peek(PlorthValueType.WORD) as PlorthWord;
+  }
+
+  peekError(): PlorthError {
+    return this.peek(PlorthValueType.ERROR) as PlorthError;
   }
 
   pop(type?: PlorthValueType): PlorthValue | null {
@@ -219,17 +227,17 @@ export default class Context {
     return this.pop(PlorthValueType.WORD) as PlorthWord;
   }
 
-  /*error(code: PlorthErrorCode, message?: string): PlorthError {
+  popError(): PlorthError {
+    return this.pop(PlorthValueType.ERROR) as PlorthError;
+  }
+
+  error(code: PlorthErrorCode, message?: string): PlorthError {
     // TODO: Find a way to use captureStackTrace in TypeScript.
     return {
       type: PlorthValueType.ERROR,
       code,
       message
     };
-  }*/
-
-  error(code: PlorthErrorCode, message?: string): Error {
-    return new Error(message);
   }
 }
 
