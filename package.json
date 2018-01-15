@@ -23,6 +23,7 @@
     "typescript": "^2.6.2"
   },
   "dependencies": {
+    "extendo-error": "^1.0.1",
     "plorth-runtime": "^2.0.0"
   }
 }

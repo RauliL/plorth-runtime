@@ -1,4 +1,5 @@
 import Runtime from "./runtime";
+import RuntimeError from "./error";
 import parse, { SyntaxError } from "plorth-parser";
 import { getType, isInstance, isNumber } from "./util";
 
@@ -232,12 +233,7 @@ export default class Context {
   }
 
   error(code: PlorthErrorCode, message?: string): PlorthError {
-    // TODO: Find a way to use captureStackTrace in TypeScript.
-    return {
-      type: PlorthValueType.ERROR,
-      code,
-      message
-    };
+    return new RuntimeError(code, message);
   }
 }
 
