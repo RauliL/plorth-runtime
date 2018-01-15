@@ -3,11 +3,11 @@ import { PrototypeDefinition } from "../runtime";
 
 const SymbolPrototype: PrototypeDefinition = {
   position(context: Context) {
-    // TODO
+    context.push(null);
   },
 
   call(context: Context) {
-    // TODO
+    context.resolveSymbol(context.popSymbol());
   }
 };
 

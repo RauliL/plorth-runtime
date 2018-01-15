@@ -79,21 +79,21 @@ export default class Context {
     this.stack.push({
       type: PlorthValueType.BOOLEAN,
       value
-    } as PlorthValue);
+    } as PlorthBoolean);
   }
 
   pushNumber(value: number): void {
     this.stack.push({
       type: PlorthValueType.NUMBER,
       value
-    } as PlorthValue);
+    } as PlorthNumber);
   }
 
   pushString(value: string): void {
     this.stack.push({
       type: PlorthValueType.STRING,
       value
-    } as PlorthValue);
+    } as PlorthString);
   }
 
   pushWord(symbol: string, quote: PlorthQuote): void {
@@ -104,21 +104,35 @@ export default class Context {
         id: symbol
       },
       quote
-    } as PlorthValue);
+    } as PlorthWord);
   }
 
   pushArray(...elements: Array<PlorthValue | null>): void {
     this.stack.push({
       type: PlorthValueType.ARRAY,
       elements: [...elements]
-    } as PlorthValue);
+    } as PlorthArray);
+  }
+
+  pushObject(properties: { [key: string]: PlorthValue | null }): void {
+    this.stack.push({
+      type: PlorthValueType.OBJECT,
+      properties
+    } as PlorthObject);
+  }
+
+  pushQuote(...values: Array<PlorthValue | null>): void {
+    this.stack.push({
+      type: PlorthValueType.QUOTE,
+      values: [...values]
+    } as PlorthQuote);
   }
 
   pushSymbol(id: string): void {
     this.push({
       type: PlorthValueType.SYMBOL,
       id
-    } as PlorthValue);
+    } as PlorthSymbol);
   }
 
   pushError(code: PlorthErrorCode, message?: string): void {
@@ -235,6 +249,53 @@ export default class Context {
   error(code: PlorthErrorCode, message?: string): PlorthError {
     return new RuntimeError(code, message);
   }
+
+  /**
+   * Resolves given identifier as a symbol, based on Plorth's symbol resolving
+   * rules.
+   */
+  resolveSymbol(id: string): void {
+    // Look from prototype of the current item.
+    if (this.stack.length > 0) {
+      const value = this.stack[this.stack.length - 1];
+      const proto = this.runtime.getPrototypeOf(value);
+
+      if (proto && id in proto.properties) {
+        const property = proto.properties[id];
+
+        if (isInstance(property, PlorthValueType.QUOTE)) {
+          this.call(property as PlorthQuote);
+        } else {
+          this.push(property);
+        }
+        return;
+      }
+    }
+
+    // Look for a word from dictionary of current context.
+    if (this.dictionary[id]) {
+      this.call(this.dictionary[id].quote);
+      return;
+    }
+
+    // Look from global dictionary.
+    if (this.runtime.dictionary[id]) {
+      this.call(this.runtime.dictionary[id].quote);
+      return;
+    }
+
+    // If the name of the word can be converted into number, then do just that.
+    if (isNumber(id)) {
+      this.pushNumber(parseFloat(id));
+      return;
+    }
+
+    // Otherwise it's reference error.
+    throw this.error(
+      PlorthErrorCode.REFERENCE,
+      `Unrecognized word: \`${id}'`
+    );
+  }
 }
 
 interface ExecVisitor {
@@ -243,48 +304,7 @@ interface ExecVisitor {
 
 const execVisitor: ExecVisitor = {
   [PlorthValueType.SYMBOL]: (context: Context, value: PlorthValue) => {
-    const symbol = value as PlorthSymbol;
-
-    // Look from prototype of the current item.
-    if (context.stack.length > 0) {
-      const value = context.stack[context.stack.length - 1];
-      const proto = context.runtime.getPrototypeOf(value);
-
-      if (proto && symbol.id in proto.properties) {
-        const property = proto.properties[symbol.id];
-
-        if (isInstance(property, PlorthValueType.QUOTE)) {
-          context.call(property as PlorthQuote);
-        } else {
-          context.push(property);
-        }
-        return;
-      }
-    }
-
-    // Look for a word from dictionary of current context.
-    if (context.dictionary[symbol.id]) {
-      context.call(context.dictionary[symbol.id].quote);
-      return;
-    }
-
-    // Look from global dictionary.
-    if (context.runtime.dictionary[symbol.id]) {
-      context.call(context.runtime.dictionary[symbol.id].quote);
-      return;
-    }
-
-    // If the name of the word can be converted into number, then do just that.
-    if (isNumber(symbol.id)) {
-      context.pushNumber(parseFloat(symbol.id));
-      return;
-    }
-
-    // Otherwise it's reference error.
-    throw context.error(
-      PlorthErrorCode.REFERENCE,
-      `Unrecognized word: \`${symbol.id}'`
-    );
+    context.resolveSymbol((value as PlorthSymbol).id);
   },
 
   [PlorthValueType.WORD]: (context: Context, value: PlorthValue) => {
