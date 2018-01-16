@@ -1,7 +1,14 @@
 import Context from "../context";
+import RuntimeError from "../error";
 import { PrototypeDefinition } from "../runtime";
-import { PlorthErrorCode, PlorthValue, PlorthValueType } from "plorth-types";
-import { getType, isInstance, toSource, toString } from "../util";
+import { getProperty, getType, isInstance, toSource, toString } from "../util";
+
+import {
+  PlorthErrorCode,
+  PlorthObject,
+  PlorthValue,
+  PlorthValueType
+} from "plorth-types";
 
 const GlobalDictionary: PrototypeDefinition = {
   "null"(context: Context) {
@@ -147,7 +154,44 @@ const GlobalDictionary: PrototypeDefinition = {
   },
 
   "instance-of?"(context: Context) {
-    // TODO
+    const object = context.popObject();
+    const value = context.peek();
+    const proto1 = context.runtime.getPrototypeOf(value);
+    let proto2: PlorthObject | null = null;
+
+    try {
+      const value = getProperty(context.runtime, object, "prototype");
+
+      if (!value || value.type !== PlorthValueType.OBJECT) {
+        context.pushBoolean(false);
+        return;
+      } else if (proto1 === value) {
+        context.pushBoolean(true);
+        return;
+      }
+      proto2 = value as PlorthObject;
+    } catch (e) {
+      context.pushBoolean(false);
+      return;
+    }
+
+    while (proto2) {
+      try {
+        const value = getProperty(context.runtime, proto2, "__proto__");
+
+        if (!value || value.type !== PlorthValueType.OBJECT) {
+          break;
+        } else if (proto1 === value) {
+          context.pushBoolean(true);
+          return;
+        }
+        proto2 = value as PlorthObject;
+      } catch (e) {
+        break;
+      }
+    }
+
+    context.pushBoolean(false);
   },
 
   proto(context: Context) {
@@ -229,11 +273,36 @@ const GlobalDictionary: PrototypeDefinition = {
   },
 
   "try"(context: Context) {
-    // TODO
+    const catchQuote = context.popQuote();
+    const tryQuote = context.popQuote();
+
+    try {
+      context.call(tryQuote);
+    } catch (e) {
+      if (e instanceof RuntimeError) {
+        context.call(catchQuote);
+      } else {
+        throw e;
+      }
+    }
   },
 
   "try-else"(context: Context) {
-    // TODO
+    const elseQuote = context.popQuote();
+    const catchQuote = context.popQuote();
+    const tryQuote = context.popQuote();
+
+    try {
+      context.call(tryQuote);
+    } catch (e) {
+      if (e instanceof RuntimeError) {
+        context.call(catchQuote);
+        return;
+      } else {
+        throw e;
+      }
+    }
+    context.call(elseQuote);
   },
 
   compile(context: Context) {
@@ -272,7 +341,10 @@ const GlobalDictionary: PrototypeDefinition = {
   },
 
   "import"(context: Context) {
-    // TODO
+    throw context.error(
+      PlorthErrorCode.IMPORT,
+      "Modules are not available on this platform."
+    );
   },
 
   args(context: Context) {
@@ -280,23 +352,23 @@ const GlobalDictionary: PrototypeDefinition = {
   },
 
   version(context: Context) {
-    // TODO
+    context.pushString(context.runtime.version);
   },
 
   "type-error"(context: Context) {
-    // TODO
+    context.pushError(PlorthErrorCode.TYPE, context.popString());
   },
 
   "value-error"(context: Context) {
-    // TODO
+    context.pushError(PlorthErrorCode.VALUE, context.popString());
   },
 
   "range-error"(context: Context) {
-    // TODO
+    context.pushError(PlorthErrorCode.RANGE, context.popString());
   },
 
   "unknown-error"(context: Context) {
-    // TODO
+    context.pushError(PlorthErrorCode.UNKNOWN, context.popString());
   },
 
   print(context: Context) {
@@ -308,7 +380,7 @@ const GlobalDictionary: PrototypeDefinition = {
   },
 
   emit(context: Context) {
-    // TODO
+    context.runtime.print(String.fromCharCode(context.popNumber()));
   },
 
   now(context: Context) {
