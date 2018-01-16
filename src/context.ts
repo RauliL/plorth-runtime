@@ -172,8 +172,8 @@ export default class Context {
     return (this.peek(PlorthValueType.ARRAY) as PlorthArray).elements;
   }
 
-  peekObject(): { [key: string]: PlorthValue | null } {
-    return (this.peek(PlorthValueType.OBJECT) as PlorthObject).properties;
+  peekObject(): PlorthObject {
+    return this.peek(PlorthValueType.OBJECT) as PlorthObject;
   }
 
   peekQuote(): PlorthQuote {
@@ -226,8 +226,8 @@ export default class Context {
     return (this.pop(PlorthValueType.ARRAY) as PlorthArray).elements;
   }
 
-  popObject(): { [key: string]: PlorthValue | null } {
-    return (this.pop(PlorthValueType.OBJECT) as PlorthObject).properties;
+  popObject(): PlorthObject {
+    return this.pop(PlorthValueType.OBJECT) as PlorthObject;
   }
 
   popQuote(): PlorthQuote {
