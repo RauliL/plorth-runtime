@@ -49,14 +49,43 @@ export default class Runtime {
     });
   }
 
+  /**
+   * Returns version number of Plorth runtime which this class implements.
+   */
+  get version(): string {
+    return "1.0.0-alpha.7";
+  }
+
+  /**
+   * Evaluates given Plorth source code under new execution context.
+   */
+  eval(source: string): void {
+    this.newContext().eval(source);
+  }
+
+  /**
+   * Creates and returns new execution context which uses this as it's runtime.
+   */
   newContext(): Context {
     return new Context(this);
   }
 
   getPrototypeOf(value: PlorthValue | null): PlorthObject | null {
-    return value ?
-      this.prototypes[value.type] || this.prototypes[PlorthValueType.OBJECT] :
-      null;
+    if (!value) {
+      return this.prototypes[PlorthValueType.OBJECT];
+    } else if (value.type === PlorthValueType.OBJECT) {
+      const proto = (value as PlorthObject).properties["__proto__"];
+
+      if (typeof proto === "undefined") {
+        return this.prototypes[PlorthValueType.OBJECT];
+      } else if (proto && proto.type === PlorthValueType.OBJECT) {
+        return proto as PlorthObject;
+      } else {
+        return null;
+      }
+    } else {
+      return this.prototypes[value.type];
+    }
   }
 
   print(text: string): void {
