@@ -348,7 +348,10 @@ const GlobalDictionary: PrototypeDefinition = {
   },
 
   args(context: Context) {
-    context.pushArray();
+    context.pushArray(...context.runtime.args.map(arg => ({
+      type: PlorthValueType.STRING,
+      value: arg
+    })));
   },
 
   version(context: Context) {

@@ -27,11 +27,15 @@ export interface PrototypeDefinition {
 export default class Runtime {
   /** Container for global dictionary. */
   dictionary: { [key: string]: PlorthWord };
+  /** Container for builtin value prototypes. */
   prototypes: { [key: string]: PlorthObject };
+  /** Container for command line arguments. */
+  args: string[];
 
   constructor() {
     this.dictionary = {};
     this.prototypes = {};
+    this.args = [];
 
     addPrototypes(this);
     Object.keys(GlobalDictionary).forEach(key => {
