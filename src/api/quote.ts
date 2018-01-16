@@ -25,7 +25,7 @@ const QuotePrototype: PrototypeDefinition = {
     const argument = context.pop();
 
     context.push({
-      type: PlorthQuote,
+      type: PlorthValueType.QUOTE,
       callback(subContext: Context) {
         subContext.push(argument);
         subContext.call(quote);
