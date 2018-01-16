@@ -24,6 +24,6 @@
   },
   "dependencies": {
     "extendo-error": "^1.0.1",
-    "plorth-runtime": "^2.0.0"
+    "plorth-parser": "^2.0.1"
   }
 }
