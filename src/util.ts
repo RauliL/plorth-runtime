@@ -1,6 +1,10 @@
+import Runtime from "./runtime";
+import RuntimeError from "./error";
+
 import {
   PlorthArray,
   PlorthBoolean,
+  PlorthErrorCode,
   PlorthNumber,
   PlorthObject,
   PlorthQuote,
@@ -27,7 +31,42 @@ export function isInstance(value: PlorthValue | null, type: PlorthValueType): bo
   }
 }
 
-export function getProperty(object: PlorthObject, key: string): PlorthObject | null) {
+export function hasProperty(runtime: Runtime,
+                            object: PlorthObject,
+                            key: string,
+                            inherited: boolean = true): boolean {
+  if (typeof object.properties[key] !== "undefined") {
+    return true;
+  }
+  if (inherited) {
+    const proto = runtime.getPrototypeOf(object);
+
+    if (proto) {
+      return hasProperty(runtime, proto, key);
+    }
+  }
+
+  return false;
+}
+
+export function getProperty(runtime: Runtime,
+                            object: PlorthObject,
+                            key: string,
+                            inherited: boolean = true): PlorthValue | null {
+  const value = object.properties[key];
+
+  if (typeof value !== "undefined") {
+    return value;
+  }
+  if (inherited) {
+    const proto = runtime.getPrototypeOf(object);
+
+    if (proto) {
+      return getProperty(runtime, proto, key);
+    }
+  }
+
+  throw new RuntimeError(PlorthErrorCode.RANGE, `No such property: \`${key}'`);
 }
 
 interface ToStringCallbacks {
