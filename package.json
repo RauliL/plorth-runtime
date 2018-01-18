@@ -19,11 +19,11 @@
   "author": "Rauli Laine <rauli.laine@iki.fi>",
   "license": "BSD-2-Clause",
   "devDependencies": {
-    "plorth-types": "^1.0.1",
     "typescript": "^2.6.2"
   },
   "dependencies": {
     "extendo-error": "^1.0.1",
-    "plorth-parser": "^2.0.1"
+    "plorth-parser": "^2.0.1",
+    "plorth-types": "^1.0.1"
   }
 }
