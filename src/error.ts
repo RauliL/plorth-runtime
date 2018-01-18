@@ -43,5 +43,6 @@ export default class RuntimeError extends ExtendoError {
   constructor(code: PlorthErrorCode, message?: string) {
     super(constructErrorMessage(code, message));
     this.code = code;
+    this.type = PlorthValueType.ERROR;
   }
 }
