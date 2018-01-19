@@ -296,6 +296,24 @@ export default class Context {
       `Unrecognized word: \`${id}'`
     );
   }
+
+  /**
+   * Attempts to import a module from given URL/filename and inserts all words
+   * declared in that module into dictionary of this execution context.
+   */
+  import(filename: string): void {
+    const { importer } = this.runtime;
+
+    if (!importer) {
+      throw this.error(
+        PlorthErrorCode.IMPORT,
+        "Modules are not available on this platform."
+      );
+    }
+    importer.import(filename).forEach(word => {
+      this.dictionary[word.symbol.id] = word;
+    });
+  }
 }
 
 interface ExecVisitor {

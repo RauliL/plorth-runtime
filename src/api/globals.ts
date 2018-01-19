@@ -340,11 +340,8 @@ const GlobalDictionary: PrototypeDefinition = {
     };
   },
 
-  "import"(context: Context) {
-    throw context.error(
-      PlorthErrorCode.IMPORT,
-      "Modules are not available on this platform."
-    );
+  import(context: Context) {
+    context.import(context.popString());
   },
 
   args(context: Context) {

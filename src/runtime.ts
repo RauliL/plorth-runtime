@@ -1,4 +1,5 @@
 import Context from "./context";
+import Importer from "./importer";
 
 import ArrayPrototype from "./api/array";
 import BooleanPrototype from "./api/boolean";
@@ -31,6 +32,8 @@ export default class Runtime {
   prototypes: { [key: string]: PlorthObject };
   /** Container for command line arguments. */
   args: string[];
+  /** Optional importer used for importing modules. */
+  importer?: Importer;
 
   constructor() {
     this.dictionary = {};
