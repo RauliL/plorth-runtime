@@ -45,4 +45,11 @@ export default class RuntimeError extends ExtendoError {
     this.code = code;
     this.type = PlorthValueType.ERROR;
   }
+
+  /**
+   * Returns textual description of the error code.
+   */
+  get codeDescription(): string {
+    return errorCodeToString(this.code);
+  }
 }
