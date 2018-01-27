@@ -9,5 +9,5 @@ export default interface Importer {
    * successful, words declared in the modules dictionary should be returned
    * as an array. Otherwise some kind of exception should be thrown.
    */
-  import: (filename: string) => PlorthWord[];
+  import: (filename: string) => Promise<PlorthWord[]>;
 }

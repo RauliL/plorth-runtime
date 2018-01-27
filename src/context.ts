@@ -1,5 +1,6 @@
 import Runtime from "./runtime";
 import RuntimeError from "./error";
+import isPromise = require("is-promise");
 import parse, { SyntaxError } from "plorth-parser";
 import { getType, isInstance, isNumber } from "./util";
 
@@ -38,8 +39,8 @@ export default class Context {
   /**
    * Evaluates given source code under this execution context.
    */
-  eval(sourceCode: string): void {
-    this.call(this.compile(sourceCode));
+  eval(sourceCode: string): Promise<void> {
+    return this.call(this.compile(sourceCode));
   }
 
   /**
@@ -60,12 +61,21 @@ export default class Context {
     }
   }
 
-  call(quote: PlorthQuote): void {
+  call(quote: PlorthQuote): Promise<void> {
     if (quote.callback) {
-      quote.callback(this);
+      const result = quote.callback(this);
+
+      if (isPromise(result)) {
+        return result as Promise<void>;
+      }
     } else if (quote.values) {
-      quote.values.forEach(value => exec(this, value));
+      return quote.values.reduce(
+        (promise, value) => promise.then(() => exec(this, value)),
+        Promise.resolve()
+      );
     }
+
+    return Promise.resolve();
   }
 
   /**
@@ -254,7 +264,7 @@ export default class Context {
    * Resolves given identifier as a symbol, based on Plorth's symbol resolving
    * rules.
    */
-  resolveSymbol(id: string): void {
+  resolveSymbol(id: string): Promise<void> {
     // Look from prototype of the current item.
     if (this.stack.length > 0) {
       const value = this.stack[this.stack.length - 1];
@@ -268,40 +278,40 @@ export default class Context {
         } else {
           this.push(property);
         }
-        return;
+
+        return Promise.resolve();
       }
     }
 
     // Look for a word from dictionary of current context.
     if (this.dictionary[id]) {
-      this.call(this.dictionary[id].quote);
-      return;
+      return this.call(this.dictionary[id].quote);
     }
 
     // Look from global dictionary.
     if (this.runtime.dictionary[id]) {
-      this.call(this.runtime.dictionary[id].quote);
-      return;
+      return this.call(this.runtime.dictionary[id].quote);
     }
 
     // If the name of the word can be converted into number, then do just that.
     if (isNumber(id)) {
       this.pushNumber(parseFloat(id));
-      return;
+
+      return Promise.resolve();
     }
 
     // Otherwise it's reference error.
-    throw this.error(
+    return Promise.reject(this.error(
       PlorthErrorCode.REFERENCE,
       `Unrecognized word: \`${id}'`
-    );
+    ));
   }
 
   /**
    * Attempts to import a module from given URL/filename and inserts all words
    * declared in that module into dictionary of this execution context.
    */
-  import(filename: string): void {
+  import(filename: string): Promise<void> {
     const { importer } = this.runtime;
 
     if (!importer) {
@@ -310,113 +320,154 @@ export default class Context {
         "Modules are not available on this platform."
       );
     }
-    importer.import(filename).forEach(word => {
-      this.dictionary[word.symbol.id] = word;
-    });
+
+    return importer.import(filename)
+      .then(words => {
+        words.forEach(word => {
+          this.dictionary[word.symbol.id] = word;
+        });
+      });
   }
 }
 
 interface ExecVisitor {
-  [key: string]: (context: Context, value: PlorthValue) => void;
+  [key: string]: (context: Context, value: PlorthValue) => Promise<void>;
 }
 
 const execVisitor: ExecVisitor = {
-  [PlorthValueType.SYMBOL]: (context: Context, value: PlorthValue) => {
-    context.resolveSymbol((value as PlorthSymbol).id);
+  [PlorthValueType.SYMBOL]: (context: Context, value: PlorthValue): Promise<void> => {
+    return context.resolveSymbol((value as PlorthSymbol).id);
   },
 
-  [PlorthValueType.WORD]: (context: Context, value: PlorthValue) => {
+  [PlorthValueType.WORD]: (context: Context, value: PlorthValue): Promise<void> => {
     const word = value as PlorthWord;
 
     context.dictionary[word.symbol.id] = word;
+
+    return Promise.resolve();
   }
 };
 
-function exec(context: Context, value: PlorthValue | null): void {
+function exec(context: Context, value: PlorthValue | null): Promise<void> {
   if (!value) {
     context.push(null);
-    return;
+
+    return Promise.resolve();
   }
 
   const callback = execVisitor[value.type];
 
   if (callback) {
-    callback(context, value);
-  } else {
-    context.push(evalValue(context, value));
+    return callback(context, value);
   }
+
+  return evalValue(context, value)
+    .then(resolvedValue => {
+      context.push(resolvedValue);
+
+      return Promise.resolve();
+    });
 }
 
 interface EvalValueVisitor {
-  [key: string]: (context: Context, value: PlorthValue) => PlorthValue | null;
+  [key: string]: (context: Context, value: PlorthValue) => Promise<PlorthValue | null>;
 }
 
 const evalValueVisitor: EvalValueVisitor = {
-  [PlorthValueType.ARRAY]: (context: Context, value: PlorthValue) => {
-    const array = value as PlorthArray;
+  [PlorthValueType.ARRAY]: (context: Context, value: PlorthValue): Promise<PlorthValue | null> => {
+    return new Promise<PlorthValue | null>((resolve, reject) => {
+      const array = value as PlorthArray;
+      const elements: Array<PlorthValue | null> = [];
+      let isError = false;
 
-    return {
-      type: PlorthValueType.ARRAY,
-      elements: array.elements.map(element => evalValue(context, element))
-    };
-  },
-
-  [PlorthValueType.OBJECT]: (context: Context, value: PlorthValue) => {
-    const object = value as PlorthObject;
-    const properties: { [key: string]: PlorthValue | null } = {};
-
-    Object.keys(object.properties).forEach(key => {
-      properties[key] = evalValue(context, object.properties[key]);
+      array.elements.forEach(element => {
+        if (isError) {
+          return;
+        }
+        evalValue(context, element)
+          .then(resolvedValue => elements.push(resolvedValue))
+          .catch(err => {
+            isError = true;
+            reject(err);
+          });
+      });
+      if (!isError) {
+        resolve({
+          type: PlorthValueType.ARRAY,
+          elements
+        } as PlorthArray);
+      }
     });
-
-    return {
-      type: PlorthValueType.OBJECT,
-      properties
-    };
   },
 
-  [PlorthValueType.SYMBOL]: (context: Context, value: PlorthValue) => {
+  [PlorthValueType.OBJECT]: (context: Context, value: PlorthValue): Promise<PlorthValue | null> => {
+    return new Promise<PlorthValue | null>((resolve, reject) => {
+      const object = value as PlorthObject;
+      const properties: { [key: string]: PlorthValue | null } = {};
+      let isError = false;
+
+      Object.keys(object.properties).forEach(key => {
+        if (isError) {
+          return;
+        }
+        evalValue(context, object.properties[key])
+          .then(resolvedValue => properties[key] = resolvedValue)
+          .catch(err => {
+            isError = true;
+            reject(err);
+          });
+      });
+      if (!isError) {
+        resolve({
+          type: PlorthValueType.OBJECT,
+          properties
+        } as PlorthObject);
+      }
+    });
+  },
+
+  [PlorthValueType.SYMBOL]: (context: Context, value: PlorthValue): Promise<PlorthValue | null> => {
     const id = (value as PlorthSymbol).id;
 
     if (id === "null") {
-      return null;
+      return Promise.resolve(null);
     } else if (id === "true") {
-      return {
+      return Promise.resolve({
         type: PlorthValueType.BOOLEAN,
         value: true
-      } as PlorthValue;
+      } as PlorthBoolean);
     } else if (id === "false") {
-      return {
+      return Promise.resolve({
         type: PlorthValueType.BOOLEAN,
         value: false
-      } as PlorthValue;
+      } as PlorthBoolean);
     } else if (id === "drop") {
-      return context.pop();
+      return Promise.resolve(context.pop());
     } else if (isNumber(id)) {
-      return {
+      return Promise.resolve({
         type: PlorthValueType.NUMBER,
         value: parseFloat(id)
-      } as PlorthValue;
+      } as PlorthNumber);
     }
 
-    throw context.error(
+    throw Promise.reject(context.error(
       PlorthErrorCode.SYNTAX,
       `Unexpected \`${id}': Missing value.`
-    );
+    ));
   },
 
-  [PlorthValueType.WORD]: (context: Context, value: PlorthValue) => {
-    throw context.error(
+  [PlorthValueType.WORD]: (context: Context, value: PlorthValue): Promise<PlorthValue | null> => {
+    return Promise.reject(context.error(
       PlorthErrorCode.SYNTAX,
       "Unexpected word declaration: Missing value."
-    );
+    ));
   }
 };
 
 function evalValue(context: Context,
-                   value: PlorthValue | null): PlorthValue | null {
+                   value: PlorthValue | null): Promise<PlorthValue | null> {
   if (!value) {
-    return null;
+    return Promise.resolve(null);
   }
 
   const callback = evalValueVisitor[value.type];
@@ -424,6 +475,6 @@ function evalValue(context: Context,
   if (callback) {
     return callback(context, value);
   } else {
-    return value;
+    return Promise.resolve(value);
   }
 }

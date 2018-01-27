@@ -19,7 +19,7 @@ import {
 } from "plorth-types";
 
 export interface PrototypeDefinition {
-  [key: string]: (context: Context) => void;
+  [key: string]: (context: Context) => void | Promise<void>;
 }
 
 /**
@@ -66,8 +66,8 @@ export default class Runtime {
   /**
    * Evaluates given Plorth source code under new execution context.
    */
-  eval(source: string): void {
-    this.newContext().eval(source);
+  eval(sourceCode: string): Promise<void> {
+    return this.newContext().eval(sourceCode);
   }
 
   /**
