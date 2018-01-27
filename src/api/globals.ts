@@ -341,7 +341,7 @@ const GlobalDictionary: PrototypeDefinition = {
   },
 
   import(context: Context) {
-    context.import(context.popString());
+    return context.import(context.popString());
   },
 
   args(context: Context) {
